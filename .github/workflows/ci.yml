@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+      - name: Download deps
+        run: go mod download
+      - name: Vet
+        run: go vet ./...
+      - name: Test with race detector
+        run: go test -race -coverprofile=coverage.out ./...
+      - name: Coverage threshold
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "Coverage $COVERAGE% is below 80% threshold"
+            exit 1
+          fi
+      - name: Fuzz decoder
+        run: go test -fuzz=FuzzDecode -fuzztime=30s ./internal/protocol/
+      - name: Bench
+        run: go test -bench=. -benchmem ./internal/protocol ./internal/cache ./internal/resolver
+      - name: Lint (go vet)
+        run: go vet ./...
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend deps
+        run: cd frontend && npm ci
+      - name: Type check
+        run: cd frontend && npm run check
+      - name: Lint
+        run: cd frontend && npm run lint
+      - name: Build
+        run: cd frontend && npm run build
+      - name: Check bundle size (<1MB)
+        run: |
+          BUNDLE_SIZE=$(du -sk frontend/build | awk '{print $1}')
+          echo "Bundle size: ${BUNDLE_SIZE}KB"
+          if [ "$BUNDLE_SIZE" -gt 1024 ]; then
+            echo "Bundle size ${BUNDLE_SIZE}KB exceeds 1MB budget"
+            exit 1
+          fi
+
+  build-docker:
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t dns-resolver:${{ github.sha }} .
+      - name: Install dnsutils for smoke checks
+        run: sudo apt-get update && sudo apt-get install -y dnsutils
+      - name: Smoke test
+        run: |
+          docker run -d --name dns-smoke -p 8080:8080 -p 5353:53/udp dns-resolver:${{ github.sha }}
+          sleep 5
+          curl -f http://localhost:8080/api/v1/health/ready
+          dig @127.0.0.1 -p 5353 example.com A +time=5
+          docker stop dns-smoke
