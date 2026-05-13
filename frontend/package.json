@@ -1,0 +1,15 @@
+{
+  "name": "dns-resolver-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "check": "node ./scripts/check.mjs",
+    "lint": "node ./scripts/lint.mjs",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
+  }
+}
