@@ -1,0 +1,63 @@
+services:
+  dns-resolver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "53:5353/udp"
+      - "53:5353/tcp"
+      - "853:8853/tcp"
+      - "127.0.0.1:8080:8080/tcp"
+    environment:
+      - DNS_PORT=5353
+      - DOT_PORT=8853
+      - CACHE_PERSIST_PATH=/data/cache.json
+      - BLOCKLIST_PATH=/blocklist.txt
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      - CACHE_MAX_ENTRIES=10000
+      - RATE_LIMIT_QPS=100
+      - RRL_ENABLED=true
+      - QNAME_MINIMIZATION=true
+      - CASE_RANDOMIZATION=true
+      - OTEL_ENABLED=false
+      - PROMETHEUS_ENABLED=true
+    volumes:
+      - dns-cache:/data
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "/dns-resolver", "--healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+
+  grafana:
+    image: grafana/grafana:10.3.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deploy/prometheus/grafana-dashboard.json:/etc/grafana/provisioning/dashboards/dns.json:ro
+
+volumes:
+  dns-cache:
+  grafana-data:
