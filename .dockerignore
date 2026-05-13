@@ -1,0 +1,7 @@
+.git
+.gocache
+.gomodcache
+bin
+node_modules
+frontend/node_modules
+**/*.test
