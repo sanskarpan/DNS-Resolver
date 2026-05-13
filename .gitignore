@@ -2,7 +2,7 @@
 .gomodcache/
 coverage.out
 bin/
-server
+/server
 frontend/node_modules/
 frontend/build/
 playwright-report/
