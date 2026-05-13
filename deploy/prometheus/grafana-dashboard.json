@@ -1,0 +1,27 @@
+{
+  "title": "DNS Resolver",
+  "panels": [
+    {
+      "title": "Queries Total",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(dns_query_total)",
+          "legendFormat": "queries"
+        }
+      ]
+    },
+    {
+      "title": "Query Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(dns_query_total[1m])",
+          "legendFormat": "qps"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

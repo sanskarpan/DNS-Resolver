@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dns-resolver
+  labels:
+    app: dns-resolver
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: dns-resolver
+  template:
+    metadata:
+      labels:
+        app: dns-resolver
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      terminationGracePeriodSeconds: 40
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+      containers:
+        - name: dns-resolver
+          image: dns-resolver:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          ports:
+            - containerPort: 5353
+              protocol: UDP
+              name: dns-udp
+            - containerPort: 5353
+              protocol: TCP
+              name: dns-tcp
+            - containerPort: 8853
+              protocol: TCP
+              name: dot
+            - containerPort: 8080
+              protocol: TCP
+              name: http
+          envFrom:
+            - configMapRef:
+                name: dns-resolver-config
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "128Mi"
+            limits:
+              cpu: "2000m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health/live
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 2
+          volumeMounts:
+            - name: cache-storage
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: cache-storage
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
