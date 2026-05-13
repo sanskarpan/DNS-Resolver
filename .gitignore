@@ -1,0 +1,10 @@
+.gocache/
+.gomodcache/
+coverage.out
+bin/
+server
+frontend/node_modules/
+frontend/build/
+playwright-report/
+frontend/playwright-report/
+frontend/test-results/
