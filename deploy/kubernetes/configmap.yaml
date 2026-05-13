@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dns-resolver-config
+data:
+  DNS_PORT: "5353"
+  DOT_PORT: "8853"
+  HTTP_PORT: "8080"
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  CACHE_PERSIST_PATH: "/data/cache.json"
+  BLOCKLIST_PATH: "/blocklist.txt"
+  CACHE_MAX_ENTRIES: "10000"
+  CACHE_MIN_TTL: "30"
+  CACHE_MAX_TTL: "86400"
+  CACHE_STALE_WINDOW: "300"
+  CACHE_STALE_MAX_AGE: "3600"
+  RATE_LIMIT_QPS: "100"
+  RATE_LIMIT_BURST: "200"
+  RRL_ENABLED: "true"
+  RRL_RESPONSES_PER_SEC: "10"
+  QNAME_MINIMIZATION: "true"
+  CASE_RANDOMIZATION: "true"
+  UPSTREAM_TIMEOUT: "5s"
+  MAX_CNAME_DEPTH: "10"
+  MAX_RECURSION_DEPTH: "10"
+  MAX_UDP_SIZE: "4096"
