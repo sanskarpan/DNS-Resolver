@@ -2,6 +2,7 @@ package api
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"log/slog"
 	"net/http"
@@ -17,6 +18,10 @@ func (a *API) withMiddleware(next http.Handler) http.Handler {
 		setCORSHeaders(w)
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if a.requiresControlPlaneAuth(r.URL.Path) && !a.authorizeControlPlaneRequest(r) {
+			writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "unauthorized"})
 			return
 		}
 		reqID := newRequestID()
@@ -35,6 +40,54 @@ func (a *API) withMiddleware(next http.Handler) http.Handler {
 			)
 		}
 	})
+}
+
+func (a *API) requiresControlPlaneAuth(path string) bool {
+	token := strings.TrimSpace(a.deps.ControlPlaneToken)
+	if token == "" {
+		return false
+	}
+	switch path {
+	case "/api/v1/health/live", "/api/v1/health/ready":
+		return false
+	}
+	if strings.HasPrefix(path, "/api/") {
+		return true
+	}
+	if strings.HasPrefix(path, "/ws/") {
+		return true
+	}
+	if path == "/metrics" || path == "/dns-query" {
+		return true
+	}
+	return strings.HasPrefix(path, "/debug/")
+}
+
+func (a *API) authorizeControlPlaneRequest(r *http.Request) bool {
+	expected := strings.TrimSpace(a.deps.ControlPlaneToken)
+	if expected == "" {
+		return true
+	}
+	candidates := []string{
+		strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")),
+		strings.TrimSpace(r.Header.Get("X-API-Token")),
+		strings.TrimSpace(r.URL.Query().Get("token")),
+	}
+	for _, candidate := range candidates {
+		if secureTokenMatch(expected, candidate) {
+			return true
+		}
+	}
+	return false
+}
+
+func secureTokenMatch(expected, actual string) bool {
+	expected = strings.TrimSpace(expected)
+	actual = strings.TrimSpace(actual)
+	if expected == "" || actual == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(expected), []byte(actual)) == 1
 }
 
 func extractTraceID(traceparent string) string {
