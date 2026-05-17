@@ -1,6 +1,9 @@
 import { test, expect } from 'playwright/test';
 
 test('embedded app supports query, reverse, bulk, and history trace navigation', async ({ page }) => {
+    await page.addInitScript(() => {
+        localStorage.setItem('dnsresolver.controlPlaneToken', 'playwright-token');
+    });
     await page.goto('/#not-a-page');
 
     await expect(page.locator('#connection-status .status-text')).toHaveText('Connected');
@@ -44,4 +47,32 @@ test('embedded app supports query, reverse, bulk, and history trace navigation',
     await expect(page.locator('#settings-status')).toContainText('Blocklist updated');
     await expect(page.locator('#blocklist-save')).toBeVisible();
     await expect(page.locator('#blocklist-text')).toHaveValue('example.com');
+});
+
+test('embedded app handles auth-required and failure-path flows', async ({ page }) => {
+    const unauthorized = await page.request.get('/api/v1/settings');
+    expect(unauthorized.status()).toBe(401);
+
+    await page.addInitScript(() => {
+        localStorage.setItem('dnsresolver.controlPlaneToken', 'playwright-token');
+    });
+    await page.goto('/#settings');
+
+    await page.fill('#auth-token', 'playwright-token');
+    await page.click('#auth-token-save');
+    await expect(page.locator('#auth-token-status')).toContainText('Token saved locally');
+
+    await page.click('.nav-link[data-page="query"]');
+    await page.fill('#reverse-ip', 'not-an-ip');
+    await page.click('#reverse-btn');
+    await expect(page.locator('#reverse-result')).toContainText('invalid ip');
+
+    await page.click('.nav-link[data-page="compare"]');
+    await page.fill('#compare-domain', 'example.com');
+    await page.fill('#compare-servers', 'bad-server');
+    await page.click('#compare-btn');
+    await expect(page.locator('#compare-result')).toContainText('no valid servers');
+
+    const missingAsset = await page.request.get('/js/does-not-exist.js');
+    expect(missingAsset.status()).toBe(404);
 });
