@@ -50,6 +50,9 @@ spec:
           envFrom:
             - configMapRef:
                 name: dns-resolver-config
+            - secretRef:
+                name: dns-resolver-secrets
+                optional: true
           resources:
             requests:
               cpu: "250m"
