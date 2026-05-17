@@ -31,6 +31,7 @@ export default defineConfig({
             OTEL_ENABLED: 'false',
             PROMETHEUS_ENABLED: 'false',
             PPROF_ENABLED: 'false',
+            CONTROL_PLANE_TOKEN: 'playwright-token',
             CACHE_PERSIST_PATH: '/tmp/dnsresolver-playwright-cache.json',
             BLOCKLIST_PATH: resolve(repoRoot, 'blocklist.txt'),
         },
