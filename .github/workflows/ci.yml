@@ -9,8 +9,8 @@ jobs:
   test-backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.23"
           cache: true
@@ -37,8 +37,8 @@ jobs:
   test-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: "npm"
@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build Docker image
         run: docker build -t dns-resolver:${{ github.sha }} .
       - name: Install dnsutils for smoke checks
@@ -77,3 +77,43 @@ jobs:
           curl -f http://localhost:8080/api/v1/health/ready
           dig @127.0.0.1 -p 5353 example.com A +time=5
           docker stop dns-smoke
+
+  validate-kubernetes:
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/v1.33.2/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+      - name: Create kind cluster
+        run: kind create cluster --name dnsresolver-ci
+      - name: Build and load image
+        run: |
+          docker build -t dns-resolver:latest .
+          kind load docker-image dns-resolver:latest --name dnsresolver-ci
+      - name: Apply manifests and verify rollout
+        run: |
+          kubectl apply -f deploy/kubernetes
+          kubectl rollout status deployment/dns-resolver --timeout=180s
+          kubectl wait --for=condition=ready pod -l app=dns-resolver --timeout=180s
+      - name: Verify in-cluster HTTP and DNS
+        run: |
+          kubectl port-forward svc/dns-resolver-http 18080:8080 >/tmp/dnsresolver-portforward.log 2>&1 &
+          PF_PID=$!
+          trap 'kill ${PF_PID} || true' EXIT
+          sleep 8
+          curl -f http://127.0.0.1:18080/api/v1/health/ready
+          curl -fsS "http://127.0.0.1:18080/api/v1/resolve?q=example.com&type=A" | grep -q '"rcode":"NOERROR"'
+          kubectl run dnsresolver-smoke --restart=Never --rm -i --image=busybox:1.36 -- nslookup example.com dns-resolver-dns.default.svc.cluster.local
+      - name: Delete kind cluster
+        if: always()
+        run: kind delete cluster --name dnsresolver-ci
