@@ -108,6 +108,7 @@ func TestLoadFromEnvCustom(t *testing.T) {
 	os.Setenv("RRL_SLIP", "3")
 	os.Setenv("PPROF_ENABLED", "true")
 	os.Setenv("PROMETHEUS_ENABLED", "false")
+	os.Setenv("CONTROL_PLANE_TOKEN", "test-token")
 	os.Setenv("BLOCKLIST_PATH", "/dev/null")
 	defer func() {
 		os.Unsetenv("DNS_PORT")
@@ -130,6 +131,7 @@ func TestLoadFromEnvCustom(t *testing.T) {
 		os.Unsetenv("RRL_SLIP")
 		os.Unsetenv("PPROF_ENABLED")
 		os.Unsetenv("PROMETHEUS_ENABLED")
+		os.Unsetenv("CONTROL_PLANE_TOKEN")
 		os.Unsetenv("BLOCKLIST_PATH")
 	}()
 
@@ -193,6 +195,9 @@ func TestLoadFromEnvCustom(t *testing.T) {
 	}
 	if cfg.PrometheusEnabled {
 		t.Fatalf("PrometheusEnabled=%v want=false", cfg.PrometheusEnabled)
+	}
+	if cfg.ControlPlaneToken != "test-token" {
+		t.Fatalf("ControlPlaneToken=%q want=test-token", cfg.ControlPlaneToken)
 	}
 }
 
