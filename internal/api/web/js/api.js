@@ -1,11 +1,41 @@
 const API_BASE = '/api/v1';
 const REQUEST_TIMEOUT_MS = 10000;
+const CONTROL_PLANE_TOKEN_KEY = 'dnsresolver.controlPlaneToken';
+
+function getControlPlaneToken() {
+    try {
+        return (localStorage.getItem(CONTROL_PLANE_TOKEN_KEY) || '').trim();
+    } catch (_) {
+        return '';
+    }
+}
+
+function setControlPlaneToken(token) {
+    try {
+        localStorage.setItem(CONTROL_PLANE_TOKEN_KEY, String(token || '').trim());
+    } catch (_) {
+        // Ignore storage failures and keep the token ephemeral for this session.
+    }
+}
+
+function clearControlPlaneToken() {
+    try {
+        localStorage.removeItem(CONTROL_PLANE_TOKEN_KEY);
+    } catch (_) {
+        // Ignore storage failures.
+    }
+}
 
 async function request(path, options = {}, expect = 'json') {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-        const res = await fetch(path, { ...options, signal: controller.signal });
+        const headers = new Headers(options.headers || {});
+        const token = getControlPlaneToken();
+        if (token && !headers.has('Authorization')) {
+            headers.set('Authorization', `Bearer ${token}`);
+        }
+        const res = await fetch(path, { ...options, headers, signal: controller.signal });
         if (!res.ok) {
             let detail = `HTTP ${res.status}`;
             try {
@@ -104,12 +134,21 @@ const api = {
 
     async health() {
         return request(`${API_BASE}/health/ready`);
-    }
+    },
+
+    getControlPlaneToken,
+    setControlPlaneToken,
+    clearControlPlaneToken
 };
 
 function connectWebSocket(path, onMessage, onOpen, onClose) {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${location.host}${path}`);
+    const url = new URL(`${protocol}//${location.host}${path}`);
+    const token = getControlPlaneToken();
+    if (token) {
+        url.searchParams.set('token', token);
+    }
+    const ws = new WebSocket(url.toString());
     
     ws.onopen = () => {
         console.log(`WebSocket connected: ${path}`);
