@@ -22,6 +22,7 @@ services:
       - CASE_RANDOMIZATION=true
       - OTEL_ENABLED=false
       - PROMETHEUS_ENABLED=true
+      - CONTROL_PLANE_TOKEN=${CONTROL_PLANE_TOKEN:-}
     volumes:
       - dns-cache:/data
     restart: unless-stopped
