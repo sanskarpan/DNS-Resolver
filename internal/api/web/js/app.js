@@ -41,6 +41,12 @@ function showTransientStatus(container, type, message) {
     container.innerHTML = `<div class="${type === 'error' ? 'error-message' : 'success-message'}">${escapeHtml(message)}</div>`;
 }
 
+function syncAuthTokenInput() {
+    const input = $('auth-token');
+    if (!input) return;
+    input.value = api.getControlPlaneToken();
+}
+
 function escapeHtml(str) {
     if (!str) return '';
     return String(str).replace(/[&<>"']/g, c => ({
@@ -701,6 +707,7 @@ function renderSettings(settings) {
     if (Array.isArray(settings.blocklist)) {
         $('blocklist-text').value = settings.blocklist.join('\n');
     }
+    syncAuthTokenInput();
 }
 
 async function saveBlocklist() {
@@ -714,6 +721,30 @@ async function saveBlocklist() {
     } catch (err) {
         showTransientStatus(status, 'error', err.message);
     }
+}
+
+async function saveControlPlaneToken() {
+    const input = $('auth-token');
+    const status = $('auth-token-status');
+    const token = input?.value.trim() || '';
+    if (!token) {
+        showTransientStatus(status, 'error', 'Enter a token to save');
+        return;
+    }
+    api.setControlPlaneToken(token);
+    showTransientStatus(status, 'success', 'Token saved locally for browser requests');
+    syncAuthTokenInput();
+    await refreshConnectionStatus();
+    if (currentPage === 'settings') {
+        loadSettings();
+    }
+}
+
+async function clearControlPlaneTokenSetting() {
+    api.clearControlPlaneToken();
+    syncAuthTokenInput();
+    showTransientStatus($('auth-token-status'), 'success', 'Token cleared from local storage');
+    await refreshConnectionStatus();
 }
 
 $('query-btn').addEventListener('click', resolveQuery);
@@ -731,6 +762,8 @@ $('cache-flush').addEventListener('click', flushCache);
 $('history-refresh').addEventListener('click', loadHistory);
 $('compare-btn').addEventListener('click', compareServers);
 $('blocklist-save').addEventListener('click', saveBlocklist);
+$('auth-token-save').addEventListener('click', saveControlPlaneToken);
+$('auth-token-clear').addEventListener('click', clearControlPlaneTokenSetting);
 document.querySelector('.back-link')?.addEventListener('click', (e) => {
     e.preventDefault();
     navigateTo('history');
@@ -778,6 +811,7 @@ function startHealthPolling() {
 }
 
 const initialHashPage = window.location.hash ? window.location.hash.slice(1) : 'query';
+syncAuthTokenInput();
 navigateTo(initialHashPage, { updateHash: !knownPages.has(initialHashPage) });
 startHealthPolling();
 
