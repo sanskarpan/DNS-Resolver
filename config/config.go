@@ -56,6 +56,7 @@ type Config struct {
 	OTLPEndpoint      string
 	OTELServiceName   string
 	PrometheusEnabled bool
+	ControlPlaneToken string
 
 	ShutdownDrainTimeout time.Duration
 	GoroutinePoolSize    int
@@ -101,6 +102,7 @@ func Default() Config {
 		OTLPEndpoint:         "http://localhost:4317",
 		OTELServiceName:      "dns-resolver",
 		PrometheusEnabled:    true,
+		ControlPlaneToken:    "",
 		ShutdownDrainTimeout: 30 * time.Second,
 		GoroutinePoolSize:    1000,
 		MaxTCPConnections:    500,
@@ -155,6 +157,7 @@ func LoadFromEnv() (Config, error) {
 	cfg.OTLPEndpoint = stringEnv("OTEL_EXPORTER_OTLP_ENDPOINT", cfg.OTLPEndpoint)
 	cfg.OTELServiceName = stringEnv("OTEL_SERVICE_NAME", cfg.OTELServiceName)
 	cfg.PrometheusEnabled = boolEnv("PROMETHEUS_ENABLED", cfg.PrometheusEnabled)
+	cfg.ControlPlaneToken = stringEnv("CONTROL_PLANE_TOKEN", cfg.ControlPlaneToken)
 
 	cfg.ShutdownDrainTimeout = durationEnv("SHUTDOWN_DRAIN_TIMEOUT", cfg.ShutdownDrainTimeout)
 	cfg.GoroutinePoolSize = intEnv("GOROUTINE_POOL_SIZE", cfg.GoroutinePoolSize)

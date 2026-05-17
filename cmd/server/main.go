@@ -127,8 +127,9 @@ func main() {
 			"version":        version,
 			"blocklist_path": cfg.BlocklistPath,
 		}),
-		Logger:       log,
-		PPROFEnabled: cfg.PPROFEnabled,
+		Logger:            log,
+		PPROFEnabled:      cfg.PPROFEnabled,
+		ControlPlaneToken: cfg.ControlPlaneToken,
 	})
 
 	httpSrv := &http.Server{

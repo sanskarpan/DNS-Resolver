@@ -43,15 +43,16 @@ func (s *RuntimeSettings) Update(next map[string]any) {
 }
 
 type Deps struct {
-	Resolver     *resolver.Resolver
-	Cache        *cache.Cache
-	DNSHandler   *server.Handler
-	Metrics      *metrics.Metrics
-	Prometheus   *metrics.PromMetrics
-	ReadyCheck   func() bool
-	Settings     *RuntimeSettings
-	Logger       *slog.Logger
-	PPROFEnabled bool
+	Resolver          *resolver.Resolver
+	Cache             *cache.Cache
+	DNSHandler        *server.Handler
+	Metrics           *metrics.Metrics
+	Prometheus        *metrics.PromMetrics
+	ReadyCheck        func() bool
+	Settings          *RuntimeSettings
+	Logger            *slog.Logger
+	PPROFEnabled      bool
+	ControlPlaneToken string
 }
 
 type API struct {
