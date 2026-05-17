@@ -66,3 +66,70 @@ func TestMiddlewareSetsTraceHeadersAndCSP(t *testing.T) {
 		t.Fatalf("unexpected csp: %q", got)
 	}
 }
+
+func TestControlPlaneAuthOptionalByDefault(t *testing.T) {
+	t.Parallel()
+
+	a := New(Deps{ReadyCheck: func() bool { return true }})
+	router := a.Router(context.Background())
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health/live", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d want=%d", rr.Code, http.StatusOK)
+	}
+}
+
+func TestControlPlaneAuthRejectsMissingToken(t *testing.T) {
+	t.Parallel()
+
+	a := New(Deps{ReadyCheck: func() bool { return true }, ControlPlaneToken: "secret-token"})
+	router := a.Router(context.Background())
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d want=%d body=%s", rr.Code, http.StatusUnauthorized, rr.Body.String())
+	}
+}
+
+func TestControlPlaneAuthAllowsHealthWithoutToken(t *testing.T) {
+	t.Parallel()
+
+	a := New(Deps{ReadyCheck: func() bool { return true }, ControlPlaneToken: "secret-token"})
+	router := a.Router(context.Background())
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health/ready", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d want=%d body=%s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+}
+
+func TestControlPlaneAuthAcceptsBearerHeader(t *testing.T) {
+	t.Parallel()
+
+	a := New(Deps{ReadyCheck: func() bool { return true }, ControlPlaneToken: "secret-token"})
+	router := a.Router(context.Background())
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
+	req.Header.Set("Authorization", "Bearer secret-token")
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d want=%d body=%s", rr.Code, http.StatusServiceUnavailable, rr.Body.String())
+	}
+}
+
+func TestControlPlaneAuthAcceptsQueryTokenForWebSocketPaths(t *testing.T) {
+	t.Parallel()
+
+	a := New(Deps{ReadyCheck: func() bool { return true }, ControlPlaneToken: "secret-token"})
+	req := httptest.NewRequest(http.MethodGet, "/ws/trace?token=secret-token", nil)
+	if !a.authorizeControlPlaneRequest(req) {
+		t.Fatal("expected query token authorization to succeed")
+	}
+}
