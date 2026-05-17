@@ -192,3 +192,19 @@ This section tracks the findings from the deep codebase audit and the fixes bein
 - [x] Add a websocket control-frame read loop so ping/close frames do not leave stale half-open connections.
 - [x] Return `404` for missing static asset paths instead of incorrectly serving the SPA shell for broken JS/CSS URLs.
 - [x] Re-run backend tests, race tests, frontend checks/build, and browser E2E after the third hardening pass.
+
+## 12. Final Maintenance and Hardening
+- [x] Update GitHub Actions workflows off the older Node 20-based action line and keep the CI/release workflows on current supported major versions.
+- [x] Add a Kubernetes rollout validation job to CI so the manifests are exercised in automation rather than only in local ad-hoc checks.
+- [x] Add optional control-plane token auth for HTTP API, metrics, debug, and WebSocket endpoints without breaking the embedded frontend when auth is disabled.
+- [x] Add embedded-frontend support for storing and using the optional control-plane token across API and WebSocket calls.
+- [x] Expand browser E2E coverage to include auth-required flows and failure-path UI behavior.
+- [x] Add a deterministic concurrent soak test that exercises the DNS handler hot path under sustained parallel query load.
+- [x] Re-run backend tests, race tests, frontend checks/build, and browser E2E after the final hardening pass.
+
+## 13. Closure Validation and Deployment Wiring
+- [x] Wire Kubernetes deployment env to accept an optional Secret for `CONTROL_PLANE_TOKEN` without breaking default local rollout behavior.
+- [x] Expose `CONTROL_PLANE_TOKEN` pass-through in Docker Compose for protected local control-plane smoke testing.
+- [x] Re-verify total backend coverage after the final auth and soak-test changes.
+- [x] Run a live protected-container smoke test covering unauthorized and authorized control-plane requests.
+- [x] Re-run a fresh local Kubernetes rollout validation after the final maintenance changes.
