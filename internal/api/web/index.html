@@ -204,6 +204,18 @@
             <div id="page-settings" class="page" role="region" aria-labelledby="settings-heading">
                 <h1 id="settings-heading">Settings</h1>
                 <div class="settings-grid" id="settings-grid" role="status" aria-live="polite"></div>
+                <div class="settings-section" role="region" aria-labelledby="auth-heading">
+                    <h2 id="auth-heading">Control Plane Token</h2>
+                    <div id="auth-token-status" role="status" aria-live="polite"></div>
+                    <div class="form-row">
+                        <label for="auth-token" class="sr-only">Control plane token</label>
+                        <input type="password" id="auth-token" class="input-full" autocomplete="off" placeholder="Optional bearer token for protected API and WebSocket access">
+                    </div>
+                    <div class="form-row">
+                        <button id="auth-token-save" class="btn btn-primary">Save Token</button>
+                        <button id="auth-token-clear" class="btn btn-secondary">Clear Token</button>
+                    </div>
+                </div>
                 <div class="settings-section" role="region" aria-labelledby="blocklist-heading">
                     <h2 id="blocklist-heading">Blocklist</h2>
                     <div id="settings-status" role="status" aria-live="polite"></div>
